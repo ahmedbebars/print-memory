@@ -2,6 +2,7 @@
 
     python -m unittest discover -s tests
 """
+import json
 import os
 import sys
 import tempfile
@@ -290,6 +291,43 @@ class AddressTest(unittest.TestCase):
             with open(path, "w", encoding="utf-8") as f:
                 f.write("not json")
             self.assertEqual(pm.load_addresses(path), {})
+
+    @staticmethod
+    def write(path, data):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+
+    def test_klipper_sync_addresses(self):
+        cloud = ("_subscribed", "user1", pm.KLIPPER_SYNC_CLOUD_ID, "addresses.json")
+        layouts = {
+            "both by hand": (("print_memory",), ("klipper_sync", "addresses.json")),
+            "both from OrcaCloud": (("_subscribed", "user1", "pm-id"), cloud),
+            "Print Memory by hand": (("print_memory",), cloud),
+            "Klipper Sync by hand": (("_subscribed", "user1", "pm-id"),
+                                     ("klipper_sync", "addresses.json")),
+        }
+        for name, (mine, theirs) in layouts.items():
+            with self.subTest(name), tempfile.TemporaryDirectory() as folder:
+                data = os.path.join(folder, "plugin_data")
+                storage = os.path.join(data, *mine)
+                os.makedirs(storage)
+                self.write(os.path.join(data, *theirs), {"Big printer": "100.64.0.12",
+                                                         "Mini": "100.64.0.13"})
+                self.write(os.path.join(storage, "addresses.json"), {"Mini": "10.0.0.5"})
+                self.assertEqual(pm.load_addresses(storage=storage),
+                                 {"Big printer": "100.64.0.12", "Mini": "10.0.0.5"})
+                self.assertEqual(pm.load_addresses(fallback=False, storage=storage),
+                                 {"Mini": "10.0.0.5"})
+
+    def test_other_users_klipper_sync_is_ignored(self):
+        with tempfile.TemporaryDirectory() as folder:
+            data = os.path.join(folder, "plugin_data")
+            storage = os.path.join(data, "_subscribed", "user1", "pm-id")
+            os.makedirs(storage)
+            self.write(os.path.join(data, "_subscribed", "user2", pm.KLIPPER_SYNC_CLOUD_ID,
+                                    "addresses.json"), {"Big printer": "100.64.0.12"})
+            self.assertEqual(pm.load_addresses(storage=storage), {})
 
 
 if __name__ == "__main__":

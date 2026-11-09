@@ -6,7 +6,7 @@
 # name = "Print Memory"
 # description = "Learns from your Klipper printers' print history: how long a slice will really take on this printer, how often this material, length and model finished before, what changed since the last good print, and why recent prints stopped."
 # author = "Ahmed Bebars"
-# version = "0.1.0"
+# version = "0.1.1"
 # ///
 """Print Memory for OrcaSlicer.
 
@@ -42,7 +42,7 @@ try:
 except ImportError:  # running the analysis outside OrcaSlicer (tests)
     orca = None
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 HTTP_TIMEOUT = 8.0
 FLEET_TIMEOUT = 4.0
 PERMISSION_WAIT = 90.0      # seconds to keep retrying while OrcaSlicer's permission prompt is open
@@ -1062,17 +1062,48 @@ def storage_folder():
     return str(folder)
 
 
-def address_file():
-    return os.path.join(storage_folder(), "addresses.json")
+def address_file(storage=None):
+    return os.path.join(storage or storage_folder(), "addresses.json")
 
 
-def load_addresses(path=None, fallback=True):
+# Klipper Sync's id on OrcaCloud. OrcaSlicer gives a plugin installed by hand the storage folder
+# plugin_data/<module name>, and one installed from OrcaCloud
+# plugin_data/_subscribed/<user id>/<plugin id>.
+KLIPPER_SYNC_CLOUD_ID = "5621380b-f627-487c-ad1c-96d42da0822c"
+
+
+def klipper_sync_address_files(storage=None):
+    """Where Klipper Sync may keep its addresses, whichever way either plugin was installed."""
+    storage = os.path.abspath(storage or storage_folder())
+    root, user = storage, None
+    for _ in range(4):
+        if os.path.basename(root).lower() == "plugin_data":
+            break
+        if os.path.basename(os.path.dirname(root)) == "_subscribed":
+            user = os.path.basename(root)
+        root = os.path.dirname(root)
+    else:
+        # No plugin_data folder above us: we run from the plugin's own folder.
+        return [os.path.join(os.path.dirname(storage), "klipper_sync", "addresses.json")]
+    paths = [os.path.join(root, "klipper_sync", "addresses.json")]
+    subscribed = os.path.join(root, "_subscribed")
+    if user:
+        users = [user]
+    else:
+        try:
+            users = sorted(os.listdir(subscribed))
+        except OSError:
+            users = []
+    paths += [os.path.join(subscribed, u, KLIPPER_SYNC_CLOUD_ID, "addresses.json") for u in users]
+    return paths
+
+
+def load_addresses(path=None, fallback=True, storage=None):
     """{printer preset name: address}. Falls back to the addresses typed into Klipper Sync,
     which keeps the same kind of file in its own storage folder."""
-    paths = [path or address_file()]
+    paths = [path or address_file(storage)]
     if fallback and path is None:
-        paths.append(os.path.join(os.path.dirname(storage_folder()), "klipper_sync",
-                                  "addresses.json"))
+        paths += klipper_sync_address_files(storage)
     merged = {}
     for p in reversed(paths):
         try:
