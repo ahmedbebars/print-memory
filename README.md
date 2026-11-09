@@ -141,6 +141,10 @@ uploading can't be matched.
 needs that print's G-code. Moonraker keeps the history after a file is deleted, but not the
 settings.
 
+**"Failed to activate" or Error next to Print Memory.** You probably have two copies: one
+installed by hand (Source: Local) and one from OrcaCloud. OrcaSlicer runs only one plugin with a
+given name, so remove one of them in the Plugins window.
+
 **This plate stays empty.** Slice again after activating the plugin, and make sure you answered
 **Yes** to the folder prompt. If you said No, open Plugins → Print Memory → Permissions.
 
