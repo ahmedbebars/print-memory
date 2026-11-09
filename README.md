@@ -77,6 +77,11 @@ You need:
 - a Klipper printer with Moonraker and its print history turned on (the `[history]` section in
   `moonraker.conf`, which Mainsail, Fluidd and KIAUH setups already have).
 
+**From OrcaCloud (easiest):** open
+[Print Memory on OrcaCloud](https://cloud.orcaslicer.com/p/52dc0c6a9d0e) and subscribe, while
+signed in to the same account as OrcaSlicer. You can also find it in OrcaSlicer under
+**Plugins → Browse plugins** by searching for `Print Memory`. OrcaCloud updates it for you.
+
 **By hand:**
 
 1. Download [`print_memory.py`](print_memory.py).
